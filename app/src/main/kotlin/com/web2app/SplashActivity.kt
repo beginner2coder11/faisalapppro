@@ -35,7 +35,8 @@ class SplashActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        hideSystemBars()
+        // Draw edge-to-edge so the splash background fills behind the system bars.
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_splash)
 
         // Preview mode forwards an app id; standalone builds read the bundled assets.
@@ -64,6 +65,25 @@ class SplashActivity : AppCompatActivity() {
             GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(bgColor, Color.WHITE))
         } else {
             ColorDrawable(bgColor)
+        }
+
+        // Let the splash background show through the system bars: make them transparent
+        // and flip their icons to match (top sits on bgColor; the bottom sits on white
+        // when a gradient is used). Disable the 3-button contrast scrim too.
+        @Suppress("DEPRECATION")
+        run {
+            window.statusBarColor = Color.TRANSPARENT
+            window.navigationBarColor = Color.TRANSPARENT
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                window.isNavigationBarContrastEnforced = false
+            }
+            val bottomColor = if (splash.gradient) Color.WHITE else bgColor
+            androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
+                isAppearanceLightStatusBars =
+                    androidx.core.graphics.ColorUtils.calculateLuminance(bgColor) > 0.5
+                isAppearanceLightNavigationBars =
+                    androidx.core.graphics.ColorUtils.calculateLuminance(bottomColor) > 0.5
+            }
         }
 
         // Splash image (fall back to the app icon, then the launcher drawable).
@@ -100,21 +120,17 @@ class SplashActivity : AppCompatActivity() {
 
         Handler(Looper.getMainLooper()).postDelayed({
             if (isFinishing) return@postDelayed
-            val showOnboarding = config?.showOnboarding == true && config.onboarding.isNotEmpty()
+            // Intro/onboarding shows only on the first launch of an installed app; once
+            // seen, later launches go straight to home. Builder preview (appId != null)
+            // always shows it so it can be previewed repeatedly.
+            val onboardingSeen = getSharedPreferences(PREFS, MODE_PRIVATE)
+                .getBoolean(KEY_ONBOARDING_SEEN, false)
+            val showOnboarding = config?.showOnboarding == true && config.onboarding.isNotEmpty() &&
+                (appId != null || !onboardingSeen)
             val next = if (showOnboarding) OnboardingActivity::class.java else MainActivity::class.java
             startActivity(Intent(this, next).putExtra(MainActivity.EXTRA_APP_ID, appId))
             finish()
         }, holdMs)
-    }
-
-    /** Hides the status + navigation bars for a full-screen splash (immersive). */
-    private fun hideSystemBars() {
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
-            systemBarsBehavior =
-                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        }
     }
 
     /** Prompts for POST_NOTIFICATIONS on Android 13+ if not already granted. */
@@ -213,5 +229,9 @@ class SplashActivity : AppCompatActivity() {
         /** Loader style index for the gradient-fill bar. */
         private const val LOADER_GRADIENT_FILL = 5
         private const val DEFAULT_THEME = 0xFF5B5BD6.toInt()
+
+        /** Prefs storing whether the intro/onboarding has been seen on this install. */
+        const val PREFS = "web2app_prefs"
+        const val KEY_ONBOARDING_SEEN = "onboarding_seen"
     }
 }

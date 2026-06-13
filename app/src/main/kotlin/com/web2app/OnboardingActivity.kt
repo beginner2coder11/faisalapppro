@@ -255,6 +255,12 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun goToApp() {
+        // Remember the intro was completed so installed apps skip it next launch.
+        // Preview (appId != null) is left untouched so it can be re-previewed.
+        if (appId == null) {
+            getSharedPreferences(SplashActivity.PREFS, MODE_PRIVATE).edit()
+                .putBoolean(SplashActivity.KEY_ONBOARDING_SEEN, true).apply()
+        }
         startActivity(
             Intent(this, MainActivity::class.java)
                 .putExtra(MainActivity.EXTRA_APP_ID, appId)
