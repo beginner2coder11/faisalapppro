@@ -21,6 +21,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.web2app.data.AppRepository
 import com.web2app.models.AppConfig
 import com.web2app.models.OnboardingScreen
@@ -43,8 +47,11 @@ class OnboardingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Draw edge-to-edge so the onboarding background fills behind the system bars,
+        // matching SplashActivity.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_onboarding)
-        applySystemBarPadding()
+        makeSystemBarsTransparent()
 
         val id = intent.getStringExtra(MainActivity.EXTRA_APP_ID)
         appId = id
@@ -62,6 +69,7 @@ class OnboardingActivity : AppCompatActivity() {
         else R.layout.onb_page_style1
         page = LayoutInflater.from(this).inflate(layout, host, false)
         host.addView(page)
+        applyContentInsets(page)
 
         // The frame (panel / card / forward button colours) is set once and never moves.
         applyBackground(page, accent())
@@ -77,6 +85,39 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun accent() = parseColor(config.onboardingGradientColor, R.color.colorPrimary)
+
+    /**
+     * Makes the status + navigation bars transparent (and drops the 3-button contrast
+     * scrim), letting the onboarding background show through — same as SplashActivity.
+     * The onboarding surfaces are light, so the bar icons are drawn dark.
+     */
+    @Suppress("DEPRECATION")
+    private fun makeSystemBarsTransparent() {
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = true
+            isAppearanceLightNavigationBars = true
+        }
+    }
+
+    /**
+     * Pads the page content by the system-bar insets so it stays clear of the (now
+     * transparent) bars, while the page background still fills the whole window.
+     */
+    private fun applyContentInsets(page: View) {
+        val (l, t, r, b) = listOf(
+            page.paddingLeft, page.paddingTop, page.paddingRight, page.paddingBottom
+        )
+        ViewCompat.setOnApplyWindowInsetsListener(page) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(l + bars.left, t + bars.top, r + bars.right, b + bars.bottom)
+            insets
+        }
+    }
 
     private fun goNext() {
         if (animating) return
