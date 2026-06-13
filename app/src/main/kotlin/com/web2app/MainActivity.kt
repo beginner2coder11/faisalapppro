@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.ViewCompat
 import android.widget.FrameLayout
 import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
@@ -62,6 +63,7 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
         applySystemBarInsets(R.id.mainRoot, R.id.statusBarScrim)
+        applyBrandSurfaces()
 
         webView = findViewById(R.id.webView)
         swipeRefresh = findViewById(R.id.swipeRefresh)
@@ -229,12 +231,22 @@ class MainActivity : AppCompatActivity() {
 
         bottomNav.visibility = View.VISIBLE
 
+        // targetSdk 35+ edge-to-edge: the root (mainRoot) already pads for the
+        // navigation-bar inset, but Material's BottomNavigationView ALSO adds its own
+        // bottom inset padding by default. That double-padding eats into our fixed bar
+        // height and collapses the icon row to a blank white strip. Neutralise the
+        // view's own inset handling so the icons + labels fill the full fixed height.
+        ViewCompat.setOnApplyWindowInsetsListener(bottomNav) { v, insets ->
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, 0)
+            insets
+        }
+
         // Apply colours from tabSettings (mirrors BottomNavigationBar composable)
         val activeColor = safeParseColor(appConfig.tabSettings.tabActiveColor, Color.BLUE)
         val inactiveColor = safeParseColor(appConfig.tabSettings.tabInactiveColor, Color.GRAY)
-        val barColor = safeParseColor(appConfig.tabSettings.tabBarColor, Color.WHITE)
 
-        bottomNav.setBackgroundColor(barColor)
+        // Modern, flat tabbar (no line/elevation, matching Google Play).
+        bottomNav.setBackgroundColor(brandBarColor())
 
         val colorStateList = ColorStateList(
             arrayOf(
@@ -382,6 +394,53 @@ class MainActivity : AppCompatActivity() {
             if (hex.isBlank()) default else Color.parseColor(hex)
         } catch (e: Exception) {
             default
+        }
+    }
+
+    /** Blends [color] toward white, keeping [fraction] (0–1) of the original colour. */
+    private fun lightTint(color: Int, fraction: Float): Int {
+        fun mix(c: Int) = (c * fraction + 255 * (1 - fraction)).toInt().coerceIn(0, 255)
+        return Color.rgb(mix(Color.red(color)), mix(Color.green(color)), mix(Color.blue(color)))
+    }
+
+    /**
+     * The brand surface colour shared by the top status-bar scrim and the bottom tabbar
+     * (Google-Play style). Defaults to a very light tint of the theme (active) colour;
+     * a custom bar colour set in the builder overrides it.
+     */
+    private fun brandBarColor(): Int {
+        val activeColor = safeParseColor(appConfig.tabSettings.tabActiveColor, Color.BLUE)
+        val rawBarColor = safeParseColor(appConfig.tabSettings.tabBarColor, Color.WHITE)
+        return if (rawBarColor == Color.WHITE) lightTint(activeColor, 0.08f) else rawBarColor
+    }
+
+    /**
+     * Colours the two system-bar regions:
+     *  - status bar (top)  → the primary/theme colour, with light icons;
+     *  - navigation bar (bottom) → the tabbar background tint, so it blends with the bar.
+     * The scrim fills the status-bar strip; the root's bottom inset-padding shows behind
+     * the nav bar, so colouring the root fills that strip.
+     */
+    private fun applyBrandSurfaces() {
+        val statusColor = safeParseColor(appConfig.tabSettings.tabActiveColor, Color.BLUE)
+        val navColor = brandBarColor()
+
+        findViewById<View>(R.id.statusBarScrim).setBackgroundColor(statusColor)
+        findViewById<View>(R.id.mainRoot).setBackgroundColor(navColor)
+
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
+            // Dark primary status bar → light icons; light nav surface → dark icons.
+            isAppearanceLightStatusBars =
+                androidx.core.graphics.ColorUtils.calculateLuminance(statusColor) > 0.5
+            isAppearanceLightNavigationBars =
+                androidx.core.graphics.ColorUtils.calculateLuminance(navColor) > 0.5
+        }
+        // In 3-button nav mode the system draws a translucent contrast scrim behind the
+        // buttons, which hides our colour. Opt out so the nav surface shows through.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = navColor
         }
     }
 

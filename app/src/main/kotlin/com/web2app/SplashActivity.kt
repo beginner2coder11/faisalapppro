@@ -35,6 +35,7 @@ class SplashActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        hideSystemBars()
         setContentView(R.layout.activity_splash)
 
         // Preview mode forwards an app id; standalone builds read the bundled assets.
@@ -104,6 +105,16 @@ class SplashActivity : AppCompatActivity() {
             startActivity(Intent(this, next).putExtra(MainActivity.EXTRA_APP_ID, appId))
             finish()
         }, holdMs)
+    }
+
+    /** Hides the status + navigation bars for a full-screen splash (immersive). */
+    private fun hideSystemBars() {
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
+            systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     /** Prompts for POST_NOTIFICATIONS on Android 13+ if not already granted. */
