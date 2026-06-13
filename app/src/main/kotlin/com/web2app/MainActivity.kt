@@ -416,13 +416,13 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Colours the two system-bar regions:
-     *  - status bar (top)  → the primary/theme colour, with light icons;
+     *  - status bar (top)  → the plain theme colour from settings, with matching icons;
      *  - navigation bar (bottom) → the tabbar background tint, so it blends with the bar.
      * The scrim fills the status-bar strip; the root's bottom inset-padding shows behind
      * the nav bar, so colouring the root fills that strip.
      */
     private fun applyBrandSurfaces() {
-        val statusColor = safeParseColor(appConfig.tabSettings.tabActiveColor, Color.BLUE)
+        val statusColor = safeParseColor(appConfig.themeColor, DEFAULT_THEME)
         val navColor = brandBarColor()
 
         findViewById<View>(R.id.statusBarScrim).setBackgroundColor(statusColor)
