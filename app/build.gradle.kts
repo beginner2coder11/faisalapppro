@@ -49,9 +49,9 @@ android {
                 keyPassword = System.getenv("SIGN_KEY_PASSWORD")
             } else {
                 storeFile = file("signing/web2app-release.keystore")
-                storePassword = "web2app"
-                keyAlias = "web2app"
-                keyPassword = "web2app"
+                storePassword = "web2apppro"
+                keyAlias = "webtoapppro"
+                keyPassword = "web2apppro"
             }
         }
     }

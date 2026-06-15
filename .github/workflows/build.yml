@@ -140,10 +140,33 @@ jobs:
         if: startsWith(github.ref_name, 'app-') && steps.branch_check.outputs.exists == 'true'
         run: |
           mkdir -p dist
+          # When an APK/AAB was signed with the shared DEFAULT key (the builder didn't
+          # push the user's own key), publish that keystore + its credentials so the user
+          # holds the exact key their app is signed with. No-op when the user's key was used.
+          emit_default_key() {
+            if [ "${{ steps.signing.outputs.signed }}" != "true" ] && [ -f app/signing/web2app-release.keystore ]; then
+              cp app/signing/web2app-release.keystore dist/keystore.jks
+              APPNAME=$(jq -r '.appName // "WebToApp"' app/src/main/assets/app_settings.json 2>/dev/null || echo WebToApp)
+              {
+                echo "Keystore credentials for $APPNAME"
+                echo "===================================="
+                echo "Keystore file : keystore.jks"
+                echo "Key alias     : webtoapppro"
+                echo "Store password: web2apppro"
+                echo "Key password  : web2apppro"
+                echo ""
+                echo "This is the shared default signing key your app was signed with."
+                echo "Keep this file safe - you need this exact keystore and these"
+                echo "passwords to publish updates of your app on Google Play."
+              } > dist/keystore-credentials.txt
+            fi
+          }
           case "${{ steps.target.outputs.value }}" in
             apk) cp app/build/outputs/apk/release/app-release.apk dist/
-                 [ -f signing-info.txt ] && cp signing-info.txt dist/ || true ;;
-            aab) cp app/build/outputs/bundle/release/app-release.aab dist/ ;;
+                 [ -f signing-info.txt ] && cp signing-info.txt dist/ || true
+                 emit_default_key ;;
+            aab) cp app/build/outputs/bundle/release/app-release.aab dist/
+                 emit_default_key ;;
             key) cp keystore.jks keystore-credentials.txt dist/ ;;
           esac
           ls -la dist
