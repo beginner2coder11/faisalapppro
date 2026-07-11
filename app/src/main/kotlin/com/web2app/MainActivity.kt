@@ -1,9 +1,11 @@
 package com.web2app
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.net.Uri
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -15,6 +17,8 @@ import android.view.ViewGroup
 import androidx.core.view.ViewCompat
 import android.widget.FrameLayout
 import android.webkit.*
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -35,6 +39,11 @@ class MainActivity : AppCompatActivity() {
     private var useCustomPageLoader = false
 
     private lateinit var permissionsHandler: PermissionsHandler
+
+    /** Pending WebView file-input callback; must be invoked exactly once per chooser. */
+    private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+    private lateinit var fileChooserLauncher: ActivityResultLauncher<Intent>
+
     private var connectivityManager: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
@@ -60,6 +69,16 @@ class MainActivity : AppCompatActivity() {
 
         // Setup permissions handler (must be created before setContentView for ActivityResult)
         permissionsHandler = PermissionsHandler(this)
+
+        // System file/photo picker for <input type="file"> — needs no media permission.
+        // Registered here (before STARTED) so it's ready when onShowFileChooser fires.
+        fileChooserLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            val uris = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+            fileUploadCallback?.onReceiveValue(uris)
+            fileUploadCallback = null
+        }
 
         setContentView(R.layout.activity_main)
         applySystemBarInsets(R.id.mainRoot, R.id.statusBarScrim)
@@ -186,6 +205,33 @@ class MainActivity : AppCompatActivity() {
 
         // WebChromeClient with popup-window support – mirrors reference Webview.kt onCreateWindow
         webView.webChromeClient = object : WebChromeClient() {
+            // Handles <input type="file"> taps via the Android system picker (zero media
+            // permissions). params.createIntent() honours the input's `accept` types and
+            // `multiple` attribute; parseResult() pairs with it to return the picked URIs.
+            override fun onShowFileChooser(
+                view: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                // Release any previous callback so an abandoned input never dead-locks.
+                fileUploadCallback?.onReceiveValue(null)
+                fileUploadCallback = filePathCallback
+
+                val intent = fileChooserParams?.createIntent()
+                    ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                        type = "*/*"
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                    }
+                return try {
+                    fileChooserLauncher.launch(intent)
+                    true
+                } catch (e: Exception) {
+                    fileUploadCallback = null
+                    filePathCallback?.onReceiveValue(null)
+                    false
+                }
+            }
+
             override fun onCreateWindow(
                 view: WebView?,
                 isDialog: Boolean,

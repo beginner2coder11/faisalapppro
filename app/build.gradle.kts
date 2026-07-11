@@ -1,8 +1,9 @@
 import groovy.json.JsonSlurper
 
 plugins {
+    // AGP 9.0+ has built-in Kotlin support, so the org.jetbrains.kotlin.android
+    // plugin is no longer applied. See https://kotl.in/gradle/agp-built-in-kotlin
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
 }
 
 // Per-app identity (package, version, name) is injected from the pushed
@@ -68,12 +69,14 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+}
 
-    kotlinOptions {
-        jvmTarget = "1.8"
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

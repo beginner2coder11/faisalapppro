@@ -6,13 +6,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Camera & Storage (enabled at runtime when permissions=[1] in app_settings.json) -->
+    <!-- Camera (enabled at runtime when permissions=[1] in app_settings.json).
+         File uploads use the Android system file/photo picker (onShowFileChooser),
+         which needs NO media-read permission, so READ_MEDIA_* are NOT declared and
+         legacy storage perms are capped to Android 12 (API 32) and below. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <!-- Location (enabled at runtime when permissions=[0] in app_settings.json) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -20,7 +23,6 @@
 
     <!-- Audio/Video (enabled at runtime when permissions=[2] in app_settings.json) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <!-- Push Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

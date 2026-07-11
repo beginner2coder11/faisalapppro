@@ -77,13 +77,12 @@ class PermissionsHandler(private val activity: Activity) {
 
     fun requestFileAndCameraPermissions(onResult: (() -> Unit)? = null) {
         fileCameraCallback = onResult
+        // File uploads go through the system file/photo picker (onShowFileChooser),
+        // which needs no READ_MEDIA/storage permission. Only CAMERA is requested here,
+        // for in-page camera capture. On API <=32 legacy storage is still requested.
         val permissions = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions += Manifest.permission.READ_MEDIA_IMAGES
-            permissions += Manifest.permission.READ_MEDIA_VIDEO
-        } else {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             permissions += Manifest.permission.READ_EXTERNAL_STORAGE
-            permissions += Manifest.permission.WRITE_EXTERNAL_STORAGE
         }
         permissions += Manifest.permission.CAMERA
         if (checkPermissions(permissions.toTypedArray())) {
@@ -108,16 +107,14 @@ class PermissionsHandler(private val activity: Activity) {
 
     fun requestAudioVideoPermissions(onResult: (() -> Unit)? = null) {
         audioVideoCallback = onResult
+        // Live capture (getUserMedia) needs mic + camera; selecting existing media goes
+        // through the system picker, so no READ_MEDIA permission is requested.
         val permissions = mutableListOf(
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.CAMERA
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions += Manifest.permission.READ_MEDIA_VIDEO
-            permissions += Manifest.permission.READ_MEDIA_AUDIO
-        } else {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             permissions += Manifest.permission.READ_EXTERNAL_STORAGE
-            permissions += Manifest.permission.WRITE_EXTERNAL_STORAGE
         }
         if (checkPermissions(permissions.toTypedArray())) {
             onResult?.invoke()
