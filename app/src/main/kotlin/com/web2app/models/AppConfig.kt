@@ -44,7 +44,9 @@ data class AppConfig(
     /** Onboarding image shape: 0 = Circle, 1 = Rounded (15dp), 2 = None. */
     val onboardingImageShape: Int = 0,
     /** Loader shown while web pages load inside the WebView. */
-    val pageLoader: PageLoader = PageLoader()
+    val pageLoader: PageLoader = PageLoader(),
+    /** Swipe-down-to-refresh gesture on the WebView (enabled by default). */
+    val pullRefresh: Boolean = true
 )
 
 data class PageLoader(
@@ -221,7 +223,8 @@ fun parseAppConfig(json: JSONObject): AppConfig {
         onboardingGradientColor = json.optString("onboardingGradientColor", "#5B5BD6"),
         onboardingCardColor = json.optString("onboardingCardColor", "#FFFFFF"),
         onboardingImageShape = json.optInt("onboardingImageShape", 0),
-        pageLoader = pageLoader
+        pageLoader = pageLoader,
+        pullRefresh = json.optBoolean("pullRefresh", true)
     )
 }
 
@@ -309,5 +312,6 @@ fun appConfigToJson(config: AppConfig): JSONObject {
     plObj.put("loaderWidth", config.pageLoader.loaderWidth)
     plObj.put("loaderThickness", config.pageLoader.loaderThickness)
     obj.put("pageLoader", plObj)
+    obj.put("pullRefresh", config.pullRefresh)
     return obj
 }

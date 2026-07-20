@@ -104,6 +104,7 @@ class MainActivity : AppCompatActivity() {
         requestConfiguredPermissions()
 
         swipeRefresh.setOnRefreshListener { webView.reload() }
+        swipeRefresh.isEnabled = appConfig.pullRefresh
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
